@@ -202,13 +202,13 @@ public class RecordingSolver implements ConnectionListener, SampleListener,
 	 * {@code true}, then this value is prefixed to the filename timestamp.
 	 */
 	// The base name of the output file
-	private String baseFileName = null;
+	protected String baseFileName = null;
 
 	/**
 	 * Format for output files.  All output files have a timestamp recorded in their filename.
 	 * An example format is "2011.06.30-14:55:43.242".
 	 */
-	private DateFormat format = new SimpleDateFormat("yyyy.MM.dd-HH:mm:ss.SSS");
+	protected DateFormat format = new SimpleDateFormat("yyyy.MM.dd-HH:mm:ss.SSS");
 
 	/**
 	 * The host name/IP address of the aggregator.
@@ -238,7 +238,7 @@ public class RecordingSolver implements ConnectionListener, SampleListener,
 	/**
 	 * The output stream for writing samples.
 	 */
-	private DataOutputStream outStream;
+	protected DataOutputStream outStream;
 
 	/**
 	 * The physical layer identifier for the subscription request.
@@ -249,6 +249,11 @@ public class RecordingSolver implements ConnectionListener, SampleListener,
 	 * When the recording was started.  Needed to calculate relative timestamp offsets in the output file.
 	 */
 	private long recordingStart = Long.MIN_VALUE;
+	
+	/**
+	 * Extension for filename.  Distinguishes between GRAIL Solver Sample format and others.  Should not include a leading dot (.).
+	 */
+	protected String filenameExtension = "gss";
 
 	/**
 	 * Indicates whether to use a rotating, time-based output file naming
@@ -304,7 +309,7 @@ public class RecordingSolver implements ConnectionListener, SampleListener,
 			// GRAIL Solver Samples?
 		}
 
-		outFileName.append(".gss");
+		outFileName.append(".").append(this.filenameExtension);
 		
 		File outFile = new File(outFileName.toString());
 		try {
@@ -364,7 +369,7 @@ public class RecordingSolver implements ConnectionListener, SampleListener,
 	 * @param sample the sensor sample to write to the output file.
 	 * @return {@code true} if the sample is written successfully, else {@code false}.
 	 */
-	private boolean recordSample(SampleMessage sample) {
+	protected boolean recordSample(SampleMessage sample) {
 		if (this.outStream == null) {
 			return true;
 		}
@@ -495,7 +500,7 @@ public class RecordingSolver implements ConnectionListener, SampleListener,
 	/**
 	 * Shuts down the solver after closing the output file.
 	 */
-	private void performShutdown() {
+	protected void performShutdown() {
 		if (this.outStream != null) {
 			synchronized (this.outStream) {
 				try {
