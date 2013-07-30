@@ -26,10 +26,14 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.owlplatform.common.SampleMessage;
 import com.owlplatform.common.util.HashableByteArray;
@@ -46,6 +50,8 @@ public class TempRecordingSolver extends RecordingSolver {
 
   DateFormat dateFormat = SimpleDateFormat.getDateTimeInstance(
       SimpleDateFormat.SHORT, SimpleDateFormat.FULL);
+
+  private final ConcurrentHashMap<HashableByteArray, ConcurrentLinkedQueue<Integer>> values = new ConcurrentHashMap<HashableByteArray, ConcurrentLinkedQueue<Integer>>();
 
   /**
    * Parses the command-line arguments and creates a new recording solver.
@@ -175,6 +181,43 @@ public class TempRecordingSolver extends RecordingSolver {
 
   }
 
+  public TempRecordingSolver() {
+    Runtime.getRuntime().addShutdownHook(new Thread() {
+      public void run() {
+        TempRecordingSolver.this.writeToFile();
+        TempRecordingSolver.super.aggregatorInterface.disconnect();
+      }
+    });
+  }
+
+  void writeToFile() {
+    for(HashableByteArray ident : this.values.keySet()){
+      ConcurrentLinkedQueue<Integer> vals = this.values.get(ident);
+      if(vals == null){
+        System.err.println("No values for " + ident);
+        continue;
+      }
+      ArrayList<Integer> list = new ArrayList<Integer>(vals);
+      Collections.sort(list);
+      Integer median = list.get(list.size()/2);
+      int id = 0;
+      id |= (ident.getData()[15]) & 0xFF;
+      id |= (ident.getData()[14] << 8) & 0xFF00;
+      id |= (ident.getData()[13] << 16) & 0xFF0000;
+      id |= (ident.getData()[12] << 24) & 0xFF000000;
+      
+      
+      
+      final String outString = String.format("%s,%d,%d",
+          this.dateFormat.format(new Date()), Integer.valueOf(id),
+          Integer.valueOf(median));
+      System.out.println(outString);
+      this.output.println(outString);
+      this.output.flush();
+      
+    }
+  }
+
   boolean prepareOutputFile() {
     StringBuffer outFileName = new StringBuffer();
     if (this.baseFileName != null) {
@@ -250,41 +293,56 @@ public class TempRecordingSolver extends RecordingSolver {
     HashableByteArray arr = new HashableByteArray(bytes);
     System.out.println("Added " + id + "/" + arr.toString());
     this.idMap.put(arr, Boolean.TRUE);
+    this.values.put(arr, new ConcurrentLinkedQueue<Integer>());
   }
 
   @Override
-  protected boolean recordSample(SampleMessage sample) {    
+  protected boolean recordSample(SampleMessage sample) {
     // Skip non-Pips
     if (sample.getPhysicalLayer() != 1) {
       return true;
     }
     HashableByteArray ident = new HashableByteArray(sample.getDeviceId());
-    if (!this.idMap.containsKey(ident)) {
+    // Skip devices not mentioned in explicit list
+    if (this.idMap.size() > 0 && !this.values.containsKey(ident)) {
       return true;
     }
 
     // This better be an integer
     byte[] data = sample.getSensedData();
-    if (data == null || data.length != 4) {
+    if (data == null || data.length != 2) {
       return true;
     }
     int temp = 0;
     temp |= data[0] & 0xFF;
     temp |= (data[1] << 8) & 0xFF00;
-    temp |= (data[2] << 16) & 0xFF0000;
-    temp |= (data[3] << 24) & 0xFF000000;
+//    temp |= (data[2] << 16) & 0xFF0000;
+//    temp |= (data[3] << 24) & 0xFF000000;
 
+    ConcurrentLinkedQueue<Integer> queue = this.values.get(ident);
+    if (queue == null) {
+      queue = new ConcurrentLinkedQueue<Integer>();
+      this.values.put(ident, queue);
+    }
+
+    queue.add(Integer.valueOf(temp));
+
+    /*
     int id = 0;
     id |= sample.getDeviceId()[15] & 0xFF;
     id |= (sample.getDeviceId()[14] << 8) & 0xFF00;
     id |= (sample.getDeviceId()[13] << 16) & 0xFF0000;
     id |= (sample.getDeviceId()[12] << 24) & 0xFF000000;
+    
+    
+    
     final String outString = String.format("%s,%d,%d",
         this.dateFormat.format(new Date()), Integer.valueOf(id),
         Integer.valueOf(temp));
     System.out.println(outString);
     this.output.println(outString);
     this.output.flush();
+    */
     return true;
   }
 

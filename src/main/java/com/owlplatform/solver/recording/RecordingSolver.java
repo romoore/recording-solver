@@ -223,7 +223,7 @@ public class RecordingSolver implements ConnectionListener, SampleListener,
 	/**
 	 * Aggregator interface.  Takes care of the connection/protocol business.
 	 */
-	private SolverAggregatorInterface aggregatorInterface = new SolverAggregatorInterface();
+	protected SolverAggregatorInterface aggregatorInterface = new SolverAggregatorInterface();
 
 	/**
 	 * How frequently to rotate the output file in milliseconds.
