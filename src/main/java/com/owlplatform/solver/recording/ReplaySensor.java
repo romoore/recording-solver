@@ -20,6 +20,7 @@
 
 package com.owlplatform.solver.recording;
 
+import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -211,7 +212,7 @@ public class ReplaySensor implements ConnectionListener, Runnable {
 		}
 
 		try {
-			this.inputStream = new DataInputStream(new FileInputStream(inFile));
+			this.inputStream = new DataInputStream(new BufferedInputStream(new FileInputStream(inFile),1000000));
 		} catch (FileNotFoundException e) {
 			log.error("Could not find {} to create input stream.", inFileName);
 			return false;
@@ -384,16 +385,6 @@ public class ReplaySensor implements ConnectionListener, Runnable {
 					// Ignored
 				}
 				continue;
-			}
-
-			try {
-				if (this.inputStream.available() <= 1) {
-					log.info("Input file has no data remaining.");
-					this.performShutdown();
-				}
-			} catch (IOException e) {
-				log.error("Unable to checking remaining bytes in input file.");
-				this.performShutdown();
 			}
 
 			long now = System.currentTimeMillis();
